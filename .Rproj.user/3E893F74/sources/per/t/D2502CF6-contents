@@ -1,0 +1,134 @@
+#Monday aug 23 problem
+#stability - complexity
+#simulated annealing application
+
+#1. Write a function to generate a random matrix for S and C
+# Create a random matrix
+
+#S is species richness, so the number of columns/rows
+S <- 50
+
+#connectance is the number of observed interactions 
+#divided by the number of possible interactions, so cells with value divided all cells 
+C <- 0.1
+
+#standard deviation of normal distribution of the interaction strengths (values in cells)
+sigma = 0.5
+
+#set nrows and columns to species richness. same to be square. empty for now
+L <- matrix(0, nr = S, nc = S)
+
+#make matrix with the interaction. fill all cells with a value from the normal distribution
+#this is one part that is unrealistic - there will likely be zeroes here
+int <- matrix(rnorm(S^2, mean = 0, 
+                    sd = sigma), nr = S, nc = S)
+
+#make a matrix filled with random numbers from a uniform distribution
+rand <- matrix(runif(S^2,0,1),
+               nr=S,nc=S)
+
+#aha this part adds the zeroes but I don't know how this is working
+#I think only keeping the values <0.1, so a lot of negatives and small positives
+L[rand<C] = int[rand<C]
+
+rand.matrix <- function(S, C) {
+  L <- matrix(0, nr = S, nc = S)
+  int <- matrix(rnorm(S^2, mean = 0, sd = 0.5), nr = S, nc = S)
+  rand <- matrix(runif(S^2,0,1),nr=S,nc=S)
+  L[rand<C] = int[rand<C]
+  L
+}
+
+m <- rand.matrix(S = 50, C = 0.1)
+
+#eigen part
+eigen(m)$values
+typeof(eigen(m)$values)
+#complex numbers
+#we don't care about wiggliness, so extract the real part
+
+
+max_eigen <- function(m){
+  max(Re(eigen(m)$value))
+}
+
+max <- max_eigen(m)
+
+# Candidate function
+c_x <- function(pars_lo, pars_hi) runif(1, pars_lo, pars_hi)
+
+# Set conditions for the simulated annealing sequence
+T_fn <- function(T0, alpha, step) T0*exp(alpha*step)
+
+T0 <- 10
+alpha = -0.001
+nsteps <- 10
+sigma <- 0.5
+
+
+# Initiate the algorithm
+a0 <- 1
+s0 <- 1000
+sd0 <- 10
+
+# Main loop
+S <- 50
+C < 0.3
+nsteps <- 1000
+
+# Prepare an object to store the result
+res <- matrix(nr = nsteps, nc = 4)
+mat <- list()
+pars0 <- rand.matrix(S, C)
+
+for(step in 1:nsteps) {
+  
+  for(j in 1:3) {
+    
+    # Draw new value for parameter j
+    pars1 <- pars0
+    rand <- sample(nrow(pars1))
+    pars1 <- pars1[rand, ]
+    #pars1 <- rand.matrix(S, C)
+    
+    print(paste("Pars0:", pars0))
+    print(paste("Pars1: ", pars1))
+    
+    # Evaluate the function
+    h1 <- max_eigen(pars1)
+    h0 <- max_eigen(pars0)
+    
+    # Compute the difference
+    diff <- h1 - h0
+    
+    # Accept if improvement
+    if(diff < 0) pars0 <- pars1
+    
+    # Accept wrong candidates 
+    else {  
+      p <- exp(diff/T_fn(T0, alpha, step))
+      if(runif(1)<p) pars0 <- pars1
+    }
+  }
+  
+  # Record values
+  res[step,] <- c(step,S, C, max_eigen(pars0))
+  mat[[step]] <- pars0
+}
+
+
+#Pull out optimized matrix
+Lopt <- mat[[which.min(res[,4])]]
+
+
+pars0 - Lopt
+
+
+
+
+
+
+#Plot the results
+plot(c(1:nsteps), res[,5], type = "l", xlab = "Time step", ylab = "h(x)",cex = 2, log = "x")
+
+
